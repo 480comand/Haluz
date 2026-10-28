@@ -1,4 +1,11 @@
-import PRODUCTS_RAW from './products.json'
+import PRODUCTS_URL from './products.json?url'
+
+// Databáza produktov je samostatný súbor (pri tisícoch produktov by spomaľovala hlavný balík
+// a každá aktualizácia dát by zneplatnila cache aplikácie). Načíta sa pred spustením appky.
+const PRODUCTS_RAW = await fetch(PRODUCTS_URL).then((r) => {
+  if (!r.ok) throw new Error(`Nepodarilo sa načítať databázu potravín (HTTP ${r.status})`)
+  return r.json()
+})
 
 // Nutričné hodnoty na 100 g (orientačné priemerné hodnoty).
 // [id, názov, kategória, emoji, kcal, bielkoviny, sacharidy, cukry, tuky, nasýtené MK, vláknina, soľ, jednotky]
