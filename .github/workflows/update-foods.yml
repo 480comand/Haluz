@@ -1,0 +1,54 @@
+name: Aktualizácia potravín
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 1 * *' # raz mesačne
+  push:
+    branches: ['claude/**']
+    paths: ['scripts/fetch-off.mjs', 'scripts/build-products.mjs', 'scripts/stores.mjs', '.github/workflows/update-foods.yml']
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: update-foods-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Stiahnuť produkty z Open Food Facts
+        run: node scripts/fetch-off.mjs "$RUNNER_TEMP/off-raw.json"
+      - name: Previesť na dáta aplikácie
+        run: node scripts/build-products.mjs "$RUNNER_TEMP/off-raw.json"
+      - name: Overiť build
+        run: npm ci && npm run build
+      - name: Commitnúť zmeny
+        id: commit
+        run: |
+          git add src/data/products.json
+          if git diff --cached --quiet; then
+            echo "Dáta sa nezmenili."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "Aktualizácia potravín z Open Food Facts"
+          git push
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+      # Commit od GITHUB_TOKEN nespúšťa ďalšie workflowy, preto nasadenie spustíme ručne.
+      - name: Nasadiť
+        if: steps.commit.outputs.changed == 'true' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy.yml --ref main
