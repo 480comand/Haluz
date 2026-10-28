@@ -1,5 +1,6 @@
 import { HashRouter, Route, Routes, Link } from 'react-router-dom'
 import { AppStoreProvider } from './store/AppStore.jsx'
+import { QuickAddProvider } from './components/QuickAdd.jsx'
 import Layout from './components/Layout.jsx'
 import Home from './pages/Home.jsx'
 import Foods from './pages/Foods.jsx'
@@ -24,6 +25,7 @@ function NotFound() {
 export default function App() {
   return (
     <AppStoreProvider>
+      <QuickAddProvider>
       <HashRouter>
         <Routes>
           <Route element={<Layout />}>
@@ -40,6 +42,7 @@ export default function App() {
           </Route>
         </Routes>
       </HashRouter>
+      </QuickAddProvider>
     </AppStoreProvider>
   )
 }

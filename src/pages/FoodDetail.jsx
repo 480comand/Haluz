@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { CATEGORIES, FOODS } from '../data/foods.js'
-import { NUTRIENTS, scaleFood, fmt, getFood } from '../lib/nutrition.js'
+import { MEALS, NUTRIENTS, scaleFood, fmt, getFood } from '../lib/nutrition.js'
 import { useStore, useToast } from '../store/AppStore.jsx'
 import { MacroDonut, Empty, FoodImage, Icon, StoreBadges } from '../components/ui.jsx'
-import { AddFoodModal } from '../components/AddFoodModal.jsx'
+import { MealChips, useQuickAdd } from '../components/QuickAdd.jsx'
+import { amountText, defaultMeal } from '../lib/quickAdd.js'
+import { toKey } from '../lib/date.js'
 
 const NUTRI_COLORS = { a: '#038141', b: '#85bb2f', c: '#fecb02', d: '#ee8100', e: '#e63e11' }
 
@@ -16,7 +18,9 @@ export default function FoodDetail() {
   const food = getFood(id, state.customFoods)
   const [qty, setQty] = useState(100)
   const [unit, setUnit] = useState('g')
-  const [adding, setAdding] = useState(null)
+  const [meal, setMeal] = useState(defaultMeal)
+  const [saved, setSaved] = useState(null) // { id, date }
+  const quick = useQuickAdd()
 
   if (!food) {
     return (
@@ -32,6 +36,7 @@ export default function FoodDetail() {
   const unitGrams = food.units.find((u) => u[0] === unit)?.[1] ?? 1
   const grams = Math.max(0, Number(qty) || 0) * unitGrams
   const n = scaleFood(food, grams)
+  const savedEntry = saved && state.diary[saved.date]?.foods.find((e) => e.id === saved.id)
   const daily = { kcal: plan.kcal, protein: plan.protein, carbs: plan.carbs, fat: plan.fat, fiber: plan.fiber, sugar: 50, satFat: Math.round((plan.kcal * 0.1) / 9), salt: 5 }
   const fav = state.favorites.includes(food.id)
   const similar = FOODS.filter((f) => f.category === food.category && f.id !== food.id && (f.img || f.generic)).slice(0, 6)
@@ -76,9 +81,15 @@ export default function FoodDetail() {
           )}
           <div className="detail-sub">Zadaj množstvo a jednotku</div>
           <div className="qty-row">
-            <input type="number" min="0" step="any" value={qty} onChange={(e) => setQty(e.target.value)} aria-label="Množstvo" className="qty-input" />
+            <input type="number" min="0" step="any" value={qty} onChange={(e) => {
+                setQty(e.target.value)
+                setSaved(null)
+              }} aria-label="Množstvo" className="qty-input" />
             <span className="op">×</span>
-            <select value={unit} onChange={(e) => setUnit(e.target.value)} aria-label="Jednotka" className="unit-select">
+            <select value={unit} onChange={(e) => {
+                setUnit(e.target.value)
+                setSaved(null)
+              }} aria-label="Jednotka" className="unit-select">
               {food.units.map(([u, g]) => (
                 <option key={u} value={u}>
                   {u === 'g' ? '1 g' : `${u} (${fmt(g, 0)} g)`}
@@ -86,10 +97,45 @@ export default function FoodDetail() {
               ))}
             </select>
             <span className="op eq">= {fmt(grams, 0)} g</span>
-            <button className="btn primary big-btn" onClick={() => setAdding({ qty: Number(qty) || 100, unit })}>
-              <Icon name="edit" /> Zapísať do jedálnička
-            </button>
           </div>
+          <MealChips
+            value={meal}
+            onChange={(m) => {
+              setMeal(m)
+              setSaved(null)
+            }}
+          />
+          {savedEntry ? (
+            <div className="saved-inline" role="status">
+              <span>
+                ✓ Zapísané do: <b>{MEALS.find((m) => m.id === savedEntry.meal)?.name}</b> · {amountText(food, savedEntry.qty, savedEntry.unit)} ·{' '}
+                {fmt(scaleFood(food, savedEntry.grams).kcal, 0)} kcal
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  dispatch({ type: 'food/remove', date: saved.date, id: saved.id })
+                  setSaved(null)
+                }}
+              >
+                Späť
+              </button>
+              <Link to="/jedalnicek">Jedálniček</Link>
+            </div>
+          ) : (
+            <button
+              className="btn primary big-btn block"
+              disabled={grams <= 0}
+              onClick={() => {
+                const date = toKey()
+                // Potvrdenie sa ukáže na mieste tlačidla, hláška dole by ho len zdvojila.
+                const id = quick.add(food, meal, date, { qty: Number(qty), unit, grams }, { silent: true })
+                setSaved({ id, date })
+              }}
+            >
+              <Icon name="edit" /> Zapísať {fmt(n.kcal, 0)} kcal do: {MEALS.find((m) => m.id === meal)?.name}
+            </button>
+          )}
         </div>
       </div>
 
@@ -213,7 +259,6 @@ export default function FoodDetail() {
           </ul>
         </section>
       )}
-      {adding && <AddFoodModal food={food} initial={adding} onClose={() => setAdding(null)} />}
     </div>
   )
 }

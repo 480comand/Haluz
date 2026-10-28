@@ -2288,3 +2288,263 @@ span.entry-main {
     justify-content: center;
   }
 }
+
+/* ── Rýchly zápis: ＋ / − pri potravine ── */
+.quick-add,
+.quick-stepper {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 38px;
+  border-radius: 999px;
+  background: var(--brand);
+  color: #fff;
+}
+.quick-add {
+  width: 38px;
+  justify-content: center;
+  border: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.quick-add:active,
+.quick-stepper button:active {
+  background: var(--brand-dark);
+}
+.quick-stepper {
+  padding: 2px;
+}
+.quick-stepper button {
+  width: 36px;
+  height: 34px;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  font-size: 1.3rem;
+  font-weight: 700;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.quick-stepper button:first-child {
+  border-right: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px 0 0 999px;
+}
+.quick-stepper button:last-child {
+  border-radius: 0 999px 999px 0;
+}
+.quick-add:focus-visible,
+.quick-stepper button:focus-visible {
+  outline: 3px solid var(--brand-leaf);
+  outline-offset: 2px;
+}
+.quick-info {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.quick-info em,
+.quick-info.added {
+  font-style: normal;
+  color: var(--brand-dark);
+  font-weight: 600;
+}
+.quick-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--gray);
+  border-radius: 8px;
+}
+.quick-list li.added {
+  background: var(--brand-soft);
+}
+.quick-list .pick-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  background: none;
+  text-align: left;
+  padding: 4px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.pick-text {
+  min-width: 0;
+  display: grid;
+}
+.added-bar {
+  background: var(--brand-soft);
+  border: 1px solid var(--brand-leaf);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  color: var(--text-2);
+  margin-bottom: 8px;
+}
+.added-bar b {
+  color: var(--brand-dark);
+}
+.added-bar.empty {
+  background: #f6f6f6;
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+.modal-foot {
+  padding: 10px 18px 16px;
+  border-top: 1px solid var(--gray);
+}
+.meal-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.meal-chips button {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+}
+.meal-chips button[aria-pressed='true'] {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+.write-to {
+  display: grid;
+  gap: 6px;
+  margin: 4px 0 12px;
+}
+.detail-main .meal-chips {
+  margin-top: 12px;
+}
+.big-btn.block {
+  width: 100%;
+  margin-top: 12px;
+}
+.saved-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  background: var(--brand-soft);
+  border: 1px solid var(--brand-leaf);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.saved-inline span {
+  flex: 1;
+  min-width: 0;
+}
+.saved-inline b {
+  color: var(--brand-dark);
+}
+.saved-inline button {
+  border: 0;
+  background: none;
+  color: var(--brand-dark);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.quick-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  width: min(520px, calc(100% - 24px));
+  background: #2c2c2c;
+  color: #fff;
+  border-radius: 10px;
+  padding: 10px 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  z-index: 210;
+  display: grid;
+  gap: 8px;
+  animation: pop 0.2s ease;
+  font-size: 0.9rem;
+}
+.quick-toast-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.quick-toast-text {
+  flex: 1;
+  min-width: 0;
+}
+.quick-toast button {
+  border: 0;
+  background: none;
+  color: #b9e48c;
+  font: inherit;
+  font-weight: 700;
+  padding: 4px 6px;
+  cursor: pointer;
+}
+.quick-toast-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.quick-toast-options button {
+  background: #444;
+  color: #fff;
+  border-radius: 999px;
+  padding: 5px 11px;
+}
+.quick-toast-options button[aria-pressed='true'] {
+  background: #b9e48c;
+  color: #2c2c2c;
+}
+@media (max-width: 640px) {
+  .quick-toast {
+    bottom: 84px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .quick-toast {
+    animation: none;
+  }
+}
+/* .pick-list button roztiahne tlačidlá na celú šírku – v rýchlom zozname to vraciame. */
+.quick-list .quick-add {
+  width: 38px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--brand);
+}
+.quick-list .quick-stepper button {
+  width: 36px;
+  padding: 0;
+  justify-content: center;
+  color: #fff;
+}
+.quick-list .quick-add:hover {
+  background: var(--brand-dark);
+}
+.quick-list .quick-stepper button:hover {
+  background: rgba(0, 0, 0, 0.12);
+}
+.quick-list .pick-main:hover {
+  background: transparent;
+}
+.data-table td.quick-cell {
+  width: 1%;
+  white-space: nowrap;
+  padding-right: 4px;
+}

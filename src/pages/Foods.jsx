@@ -4,11 +4,13 @@ import { CATEGORIES, STORES } from '../data/foods.js'
 import { allFoods, fmt, normalize } from '../lib/nutrition.js'
 import { useStore, useToast } from '../store/AppStore.jsx'
 import { Pagination, Modal, Empty, FoodImage, Icon, StoreBadges } from '../components/ui.jsx'
-import { AddFoodModal } from '../components/AddFoodModal.jsx'
+import { MealChips, QuickButton, QuickInfo } from '../components/QuickAdd.jsx'
+import { defaultMeal } from '../lib/quickAdd.js'
+import { toKey } from '../lib/date.js'
 
 const SORTS = [
   ['name', 'Názov'],
-  ['kcal', 'Energetická hodnota (kcal)'],
+  ['kcal', <><span className="hide-sm">Energetická hodnota </span>(kcal)</>],
   ['protein', 'Bielkoviny (g)'],
   ['carbs', 'Sacharidy (g)'],
   ['fat', 'Tuky (g)'],
@@ -93,7 +95,8 @@ export default function Foods() {
   const [sort, setSort] = useState(['default', 1])
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(20)
-  const [adding, setAdding] = useState(null)
+  const [meal, setMeal] = useState(defaultMeal)
+  const today = toKey()
   const [creating, setCreating] = useState(false)
 
   const setParam = (k, v) => {
@@ -165,6 +168,11 @@ export default function Foods() {
           </select>
         </div>
 
+        <div className="write-to">
+          <span className="muted small">Ťuknutím na ＋ zapíšeš do:</span>
+          <MealChips value={meal} onChange={setMeal} label="Zapisovať do jedla" />
+        </div>
+
         {list.length === 0 ? (
           <Empty icon="🔎" title="Žiadna potravina nezodpovedá filtru">
             Skús iný výraz alebo si pridaj vlastnú potravinu.
@@ -201,6 +209,7 @@ export default function Foods() {
                               {f.brand} <StoreBadges stores={f.stores} max={2} />
                             </span>
                           )}
+                          <QuickInfo food={f} meal={meal} date={today} />
                         </span>
                       </Link>
                     </td>
@@ -208,11 +217,8 @@ export default function Foods() {
                     <td className="num hide-sm">{fmt(f.protein)}</td>
                     <td className="num hide-sm">{fmt(f.carbs)}</td>
                     <td className="num hide-sm">{fmt(f.fat)}</td>
-                    <td className="num">
-                      <button className="write-btn" onClick={() => setAdding(f)} aria-label={`Zapísať ${f.name}`}>
-                        <Icon name="edit" />
-                        <span className="hide-sm">Zapísať</span>
-                      </button>
+                    <td className="num quick-cell">
+                      <QuickButton food={f} meal={meal} date={today} />
                     </td>
                   </tr>
                 ))}
@@ -241,7 +247,6 @@ export default function Foods() {
           <Pagination page={current} pages={pages} onChange={setPage} />
         </div>
       </div>
-      {adding && <AddFoodModal food={adding} onClose={() => setAdding(null)} />}
       {creating && <CustomFoodModal onClose={() => setCreating(false)} />}
     </div>
   )

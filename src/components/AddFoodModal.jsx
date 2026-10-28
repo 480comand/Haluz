@@ -1,19 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Modal, FoodImage } from './ui.jsx'
-import { MEALS, scaleFood, fmt, allFoods, normalize, recipeAsFood } from '../lib/nutrition.js'
+import { MEALS, scaleFood, fmt, allFoods, normalize, recipeAsFood, resolveFood } from '../lib/nutrition.js'
 import { RECIPES } from '../data/recipes.js'
-import { useStore, useToast } from '../store/AppStore.jsx'
+import { useStore, useToast, uid } from '../store/AppStore.jsx'
 import { toKey } from '../lib/date.js'
-
-function defaultMeal() {
-  const h = new Date().getHours()
-  if (h < 9) return 'ranajky'
-  if (h < 11) return 'desiata'
-  if (h < 14) return 'obed'
-  if (h < 17) return 'olovrant'
-  if (h < 21) return 'vecera'
-  return 'druha-vecera'
-}
+import { defaultMeal, findEntry } from '../lib/quickAdd.js'
+import { QuickButton, QuickInfo, mealIn, useQuickAdd } from './QuickAdd.jsx'
 
 /** Formulár množstva a jedla pre konkrétnu potravinu. */
 export function AmountForm({ food, initial, onSubmit, submitLabel = 'Zapísať do jedálnička', showDate = true }) {
@@ -111,38 +103,57 @@ export function AddFoodModal({ food, onClose, initial }) {
   )
 }
 
-/** Vyhľadanie potraviny alebo receptu a následné zapísanie do jedálnička. */
+/** Vyhľadanie potraviny alebo receptu; ＋ zapisuje hneď, ťuknutie na názov otvorí presné množstvo. */
 export function FoodPickerModal({ date, meal, onClose }) {
   const { state, dispatch } = useStore()
-  const toast = useToast()
+  const quick = useQuickAdd()
   const [q, setQ] = useState('')
   const [picked, setPicked] = useState(null)
-  const [tab, setTab] = useState('vsetko')
+  const [tab, setTab] = useState('nedavne')
+  // Záznamy, ktoré v jedle boli už pred otvorením okna, sa do súhrnu „pribudlo“ nerátajú.
+  const before = useRef(new Set((state.diary[date]?.foods || []).map((e) => e.id)))
+
+  const allItems = useMemo(() => [...allFoods(state.customFoods), ...RECIPES.map(recipeAsFood)], [state.customFoods])
+  const recent = useMemo(() => {
+    const seen = new Set()
+    const ids = []
+    for (const d of Object.keys(state.diary).sort().reverse()) {
+      for (const e of [...state.diary[d].foods].reverse()) {
+        if (seen.has(e.foodId)) continue
+        seen.add(e.foodId)
+        ids.push(e.foodId)
+      }
+    }
+    return ids
+  }, [state.diary])
 
   const items = useMemo(() => {
-    const foods = allFoods(state.customFoods)
-    const recipes = RECIPES.map(recipeAsFood)
-    let list = tab === 'oblubene' ? foods.filter((f) => state.favorites.includes(f.id)) : tab === 'recepty' ? recipes : [...foods, ...recipes]
-    if (tab === 'nedavne') {
-      const seen = new Set()
-      const recent = []
-      const days = Object.keys(state.diary).sort().reverse()
-      for (const d of days) {
-        for (const e of [...state.diary[d].foods].reverse()) {
-          if (seen.has(e.foodId)) continue
-          seen.add(e.foodId)
-          recent.push(e.foodId)
-        }
-      }
-      list = recent.map((id) => [...foods, ...recipes].find((f) => f.id === id)).filter(Boolean)
-    }
     const nq = normalize(q.trim())
-    if (nq) list = list.filter((f) => normalize(f.name).includes(nq))
-    return list.slice(0, 60)
-  }, [q, tab, state.customFoods, state.favorites, state.diary])
+    if (nq) return allItems.filter((f) => normalize(`${f.name} ${f.brand || ''}`).includes(nq)).slice(0, 60)
+    if (tab === 'oblubene') return allItems.filter((f) => state.favorites.includes(f.id)).slice(0, 60)
+    if (tab === 'recepty') return allItems.filter((f) => f.category === 'recept')
+    const byId = new Map(allItems.map((f) => [f.id, f]))
+    return recent.map((id) => byId.get(id)).filter(Boolean).slice(0, 60)
+  }, [q, tab, allItems, recent, state.favorites])
+
+  const added = (state.diary[date]?.foods || []).filter((e) => e.meal === meal && !before.current.has(e.id))
+  const addedFoods = added.map((e) => ({ e, f: resolveFood(e.foodId, state.customFoods) })).filter((x) => x.f)
+  const addedKcal = addedFoods.reduce((s, { e, f }) => s + scaleFood(f, e.grams).kcal, 0)
+  const mealTitle = MEALS.find((m) => m.id === meal)?.name
+  const count = addedFoods.length
 
   return (
-    <Modal title={picked ? 'Množstvo' : 'Pridať potravinu'} onClose={onClose}>
+    <Modal
+      title={picked ? 'Presné množstvo' : `Pridať do: ${mealTitle}`}
+      onClose={onClose}
+      footer={
+        !picked && (
+          <button type="button" className="btn primary block" onClick={onClose}>
+            {count ? `Hotovo · ${count} ${count === 1 ? 'potravina' : count < 5 ? 'potraviny' : 'potravín'} · ${fmt(addedKcal, 0)} kcal` : 'Zavrieť'}
+          </button>
+        )
+      }
+    >
       {picked ? (
         <>
           <button className="link-btn" onClick={() => setPicked(null)}>
@@ -153,38 +164,56 @@ export function FoodPickerModal({ date, meal, onClose }) {
             initial={{ meal, date }}
             showDate={false}
             onSubmit={({ date: _d, ...entry }) => {
-              dispatch({ type: 'food/add', date, entry })
-              toast(`${picked.name} zapísané`)
-              onClose()
+              const id = uid()
+              dispatch({ type: 'food/add', date, entry: { ...entry, id } })
+              quick.show(date, id)
+              setPicked(null)
             }}
           />
         </>
       ) : (
         <>
-          <input className="search-input" placeholder="Hľadaj potravinu alebo recept…" value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
-          <div className="tabs small">
-            {[
-              ['vsetko', 'Všetko'],
-              ['nedavne', 'Nedávne'],
-              ['oblubene', 'Obľúbené'],
-              ['recepty', 'Recepty'],
-            ].map(([id, name]) => (
-              <button key={id} className={`tab ${tab === id ? 'active' : ''}`} onClick={() => setTab(id)} type="button">
-                {name}
-              </button>
-            ))}
+          <div className={`added-bar ${count ? '' : 'empty'}`} aria-live="polite">
+            {count ? (
+              <>
+                <b>✓ {mealIn(meal).charAt(0).toUpperCase() + mealIn(meal).slice(1)} pribudlo:</b> {addedFoods.map(({ f }) => f.name).join(', ')} · {fmt(addedKcal, 0)} kcal
+              </>
+            ) : (
+              <>Ťukni na ＋ a potravina sa hneď zapíše. Na názov ťukni, ak chceš zadať presné množstvo.</>
+            )}
           </div>
-          <ul className="pick-list">
-            {items.map((f) => (
-              <li key={f.id}>
-                <button onClick={() => setPicked(f)}>
-                  <FoodImage food={f} className="thumb" />
-                  <span className="grow">{f.name}</span>
-                  <span className="muted small">{fmt(f.kcal, 0)} kcal/100 g</span>
+          <input className="search-input" placeholder="Hľadaj potravinu alebo recept…" value={q} onChange={(e) => setQ(e.target.value)} />
+          {!q && (
+            <div className="tabs small">
+              {[
+                ['nedavne', 'Nedávne'],
+                ['oblubene', 'Obľúbené'],
+                ['recepty', 'Recepty'],
+              ].map(([id, name]) => (
+                <button key={id} className={`tab ${tab === id ? 'active' : ''}`} onClick={() => setTab(id)} type="button">
+                  {name}
                 </button>
+              ))}
+            </div>
+          )}
+          <ul className="pick-list quick-list">
+            {items.map((f) => (
+              <li key={f.id} className={findEntry(state.diary[date], f.id, meal) ? 'added' : ''}>
+                <button type="button" className="pick-main" onClick={() => setPicked(f)}>
+                  <FoodImage food={f} className="thumb" />
+                  <span className="pick-text">
+                    <span className="ellipsis strong">{f.name}</span>
+                    <QuickInfo food={f} meal={meal} date={date} />
+                  </span>
+                </button>
+                <QuickButton food={f} meal={meal} date={date} />
               </li>
             ))}
-            {items.length === 0 && <li className="muted pad">Nič sa nenašlo.</li>}
+            {items.length === 0 && (
+              <li className="muted pad">
+                {q ? 'Nič sa nenašlo.' : tab === 'nedavne' ? 'Zatiaľ nič. Napíš do vyhľadávania, čo si jedol.' : tab === 'oblubene' ? 'Nemáš žiadne obľúbené potraviny.' : 'Nič sa nenašlo.'}
+              </li>
+            )}
           </ul>
         </>
       )}

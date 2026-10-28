@@ -47,10 +47,14 @@ export function StoreBadges({ stores, max = 3 }) {
   )
 }
 
-export function Modal({ title, onClose, children, wide }) {
+export function Modal({ title, onClose, children, wide, footer }) {
   const ref = useRef(null)
+  // onClose býva pri každom prekreslení nová funkcia; efekt (fokus, Escape) beží len raz pri otvorení,
+  // inak by sa po každom zápise presunul fokus do vyhľadávania a na mobile vyskočila klávesnica.
+  const closeRef = useRef(onClose)
+  closeRef.current = onClose
   useEffect(() => {
-    const onKey = (e) => e.key === 'Escape' && onClose()
+    const onKey = (e) => e.key === 'Escape' && closeRef.current()
     document.addEventListener('keydown', onKey)
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -59,7 +63,7 @@ export function Modal({ title, onClose, children, wide }) {
       document.removeEventListener('keydown', onKey)
       document.body.style.overflow = prev
     }
-  }, [onClose])
+  }, [])
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className={`modal ${wide ? 'modal-wide' : ''}`} role="dialog" aria-modal="true" aria-label={title} ref={ref}>
@@ -70,6 +74,7 @@ export function Modal({ title, onClose, children, wide }) {
           </button>
         </div>
         <div className="modal-body">{children}</div>
+        {footer && <div className="modal-foot">{footer}</div>}
       </div>
     </div>
   )
