@@ -26,9 +26,12 @@ const gradeShards = (base) => [
   `${base} AND NOT nutriscore_grade:(${GRADES.map((g) => `"${g}"`).join(' OR ')})`,
 ]
 
+const CHAINS = `(${or('stores_tags', CHAIN_STORE_TAGS)} OR ${or('brands_tags', Object.keys(STORE_BRANDS))})`
 const QUERIES = [
   ...gradeShards(SK),
-  ...gradeShards(`${CZ} AND NOT ${SK} AND (${or('stores_tags', CHAIN_STORE_TAGS)} OR ${or('brands_tags', Object.keys(STORE_BRANDS))})`),
+  ...gradeShards(`${CZ} AND NOT ${SK} AND ${CHAINS}`),
+  // Privátne značky s českou/slovenskou etiketou, ktorým v Open Food Facts chýba krajina.
+  ...gradeShards(`(_exists_:product_name_sk OR _exists_:product_name_cs) AND NOT ${SK} AND NOT ${CZ} AND ${or('brands_tags', Object.keys(STORE_BRANDS))}`),
 ]
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -50,7 +53,13 @@ async function getPage(q, page) {
 
 const products = new Map()
 for (const q of QUERIES) {
-  const first = await getPage(q, 1)
+  let first
+  try {
+    first = await getPage(q, 1)
+  } catch (e) {
+    console.warn(`Dopyt zlyhal, preskakujem (${e.message}): ${q.slice(0, 160)}`)
+    continue
+  }
   const count = first.count ?? 0
   const pages = Math.min(first.page_count ?? Math.ceil(count / PAGE_SIZE), MAX_WINDOW / PAGE_SIZE)
   console.log(`${count} výsledkov (${pages} strán): ${q.slice(0, 160)}`)
