@@ -1,8 +1,7 @@
 // Stiahne produkty z Open Food Facts (search.openfoodfacts.org) do surového JSON pre build-products.mjs.
 // Použitie: node scripts/fetch-off.mjs off-raw.json
-// Berie produkty predávané na Slovensku a české produkty reťazcov, ktoré sú aj na Slovensku.
+// Berie produkty predávané na Slovensku a v Česku.
 import { writeFileSync } from 'node:fs'
-import { STORE_BRANDS } from './stores.mjs'
 
 const OUT = process.argv[2] || 'off-raw.json'
 const API = 'https://search.openfoodfacts.org/search'
@@ -14,9 +13,6 @@ const FIELDS = [
   'images', 'nutriscore_grade', 'unique_scans_n',
 ].join(',')
 
-const CHAIN_STORE_TAGS = ['lidl', 'kaufland', 'tesco', 'billa', 'penny', 'penny-market', 'globus', 'coop', 'albert']
-const or = (field, values) => `${field}:(${values.map((v) => `"${v}"`).join(' OR ')})`
-
 const SK = 'countries_tags:"en:slovakia"'
 const CZ = 'countries_tags:"en:czech-republic"'
 // Rozdelenie podľa Nutri-Score, aby žiadny dopyt neprekročil limit 10 000 výsledkov.
@@ -26,12 +22,10 @@ const gradeShards = (base) => [
   `${base} AND NOT nutriscore_grade:(${GRADES.map((g) => `"${g}"`).join(' OR ')})`,
 ]
 
-const CHAINS = `(${or('stores_tags', CHAIN_STORE_TAGS)} OR ${or('brands_tags', Object.keys(STORE_BRANDS))})`
 const QUERIES = [
   ...gradeShards(SK),
-  ...gradeShards(`${CZ} AND NOT ${SK} AND ${CHAINS}`),
-  // Produkty reťazcov s českou/slovenskou etiketou, ktorým v Open Food Facts chýba krajina.
-  ...gradeShards(`${or('languages_tags', ['en:slovak', 'en:czech'])} AND NOT ${SK} AND NOT ${CZ} AND ${CHAINS}`),
+  // Všetky české produkty – veľká časť sortimentu je rovnaká aj na Slovensku.
+  ...gradeShards(`${CZ} AND NOT ${SK}`),
 ]
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))

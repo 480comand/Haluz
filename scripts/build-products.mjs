@@ -116,11 +116,9 @@ for (const p of raw) {
   seen.add(key)
 
   const stores = storesOf(p)
-  const inSlovakia = (p.countries_tags || []).includes('en:slovakia')
-  if (!inSlovakia) {
-    // České produkty berieme len vtedy, keď sa predávajú v reťazci, ktorý je aj na Slovensku.
+  if (!(p.countries_tags || []).includes('en:slovakia')) {
+    // Pri českých produktoch nezobrazujeme reťazce, ktoré na Slovensku nie sú.
     for (let i = stores.length - 1; i >= 0; i--) if (CZ_ONLY_STORES.has(stores[i])) stores.splice(i, 1)
-    if (!stores.length) continue
   }
   const units = []
   const sq = Number(p.serving_quantity)
