@@ -30,8 +30,8 @@ const CHAINS = `(${or('stores_tags', CHAIN_STORE_TAGS)} OR ${or('brands_tags', O
 const QUERIES = [
   ...gradeShards(SK),
   ...gradeShards(`${CZ} AND NOT ${SK} AND ${CHAINS}`),
-  // Privátne značky s českou/slovenskou etiketou, ktorým v Open Food Facts chýba krajina.
-  ...gradeShards(`(_exists_:product_name_sk OR _exists_:product_name_cs) AND NOT ${SK} AND NOT ${CZ} AND ${or('brands_tags', Object.keys(STORE_BRANDS))}`),
+  // Produkty reťazcov s českou/slovenskou etiketou, ktorým v Open Food Facts chýba krajina.
+  ...gradeShards(`${or('languages_tags', ['en:slovak', 'en:czech'])} AND NOT ${SK} AND NOT ${CZ} AND ${CHAINS}`),
 ]
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
