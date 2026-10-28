@@ -1,4 +1,5 @@
 import PRODUCTS_URL from './products.json?url'
+import { EXTRA } from './generic-extra.js'
 
 // Databáza produktov je samostatný súbor (pri tisícoch produktov by spomaľovala hlavný balík
 // a každá aktualizácia dát by zneplatnila cache aplikácie). Načíta sa pred spustením appky.
@@ -138,7 +139,7 @@ const slug = (s) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '')
 
-const GENERIC = RAW.map(([id, name, category, emoji, kcal, protein, carbs, sugar, fat, satFat, fiber, salt, units]) => ({
+const GENERIC = [...RAW, ...EXTRA].map(([id, name, category, emoji, kcal, protein, carbs, sugar, fat, satFat, fiber, salt, units]) => ({
   id,
   name,
   category,
