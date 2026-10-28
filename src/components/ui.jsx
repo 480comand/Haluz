@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { fmt, MACRO_COLORS } from '../lib/nutrition.js'
 
 export function Logo({ size = 40 }) {
@@ -23,7 +23,10 @@ export function Icon({ name, fill = false, className = '' }) {
 
 /** Fotka produktu, alebo emoji pre všeobecné potraviny. */
 export function FoodImage({ food, className = '' }) {
-  if (food.img) return <img src={food.img} alt={food.name} loading="lazy" className={`food-img ${className}`} />
+  // Keď sa fotka nenačíta (offline, zmazaná v Open Food Facts), ukáže sa emoji kategórie.
+  const [failedSrc, setFailedSrc] = useState(null)
+  if (food.img && failedSrc !== food.img)
+    return <img src={food.img} alt={food.name} loading="lazy" className={`food-img ${className}`} onError={() => setFailedSrc(food.img)} />
   return (
     <span className={`food-img emoji ${className}`} role="img" aria-label={food.name}>
       {food.emoji}
