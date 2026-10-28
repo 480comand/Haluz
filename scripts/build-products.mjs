@@ -1,8 +1,7 @@
 // Prevedie surový export Open Food Facts (produkty predávané na Slovensku) na kompaktný JSON pre aplikáciu.
 // Použitie: node scripts/build-products.mjs <off-raw.json>
-// Surové dáta stiahne scripts/fetch-off.mjs.
+// Surové dáta: https://search.openfoodfacts.org/search?q=countries_tags:"en:slovakia"
 import { readFileSync, writeFileSync } from 'node:fs'
-import { SK_STORES, CZ_ONLY_STORES, STORE_BRANDS, brandTag } from './stores.mjs'
 
 const raw = JSON.parse(readFileSync(process.argv[2], 'utf8'))
 const OUT = new URL('../src/data/products.json', import.meta.url)
@@ -10,6 +9,36 @@ const OUT = new URL('../src/data/products.json', import.meta.url)
 const first = (v) => (Array.isArray(v) ? v[0] : v)
 const round = (n, d = 1) => (n == null || Number.isNaN(Number(n)) ? 0 : Math.round(Number(n) * 10 ** d) / 10 ** d)
 
+const SK_STORES = {
+  tesco: 'Tesco',
+  kaufland: 'Kaufland',
+  lidl: 'Lidl',
+  billa: 'Billa',
+  'coop jednota': 'COOP Jednota',
+  coop: 'COOP Jednota',
+  jednota: 'COOP Jednota',
+  terno: 'Terno',
+  penny: 'Penny',
+  'penny market': 'Penny',
+  fresh: 'Fresh',
+  metro: 'Metro',
+  makro: 'Metro',
+  dm: 'dm',
+  'dm drogerie markt': 'dm',
+  kraj: 'Kraj',
+  yeme: 'Yeme',
+  labaš: 'Labaš',
+  cba: 'CBA',
+  globus: 'Globus',
+  albert: 'Albert',
+  auchan: 'Auchan',
+  aldi: 'Aldi',
+  spar: 'Spar',
+  'rohlik.cz': 'Rohlík',
+  rohlik: 'Rohlík',
+  'potraviny.sk': 'Potraviny.sk',
+  gymbeam: 'GymBeam',
+}
 
 const RULES = [
   ['doplnky', ['dietary-supplements', 'bodybuilding-supplements', 'protein-powders', 'whey']],
@@ -91,14 +120,6 @@ function grams(qty) {
   return g > 0 && g <= 5000 ? Math.round(g) : null
 }
 
-function storesOf(p) {
-  const list = (v) => (Array.isArray(v) ? v : v ? String(v).split(',') : [])
-  const fromField = list(p.stores).map((s) => SK_STORES[s.trim().toLowerCase()])
-  const brandTags = p.brands_tags?.length ? p.brands_tags : list(p.brands).map(brandTag)
-  const fromBrand = brandTags.map((t) => STORE_BRANDS[String(t).replace(/^[a-z]{2}:/, '')])
-  return [...new Set([...fromField, ...fromBrand].filter(Boolean))]
-}
-
 const seen = new Set()
 const out = []
 for (const p of raw) {
@@ -115,13 +136,8 @@ for (const p of raw) {
   if (seen.has(key)) continue
   seen.add(key)
 
-  const stores = storesOf(p)
-  const inSlovakia = (p.countries_tags || []).includes('en:slovakia')
-  if (!inSlovakia) {
-    // České produkty berieme len vtedy, keď sa predávajú v reťazci, ktorý je aj na Slovensku.
-    for (let i = stores.length - 1; i >= 0; i--) if (CZ_ONLY_STORES.has(stores[i])) stores.splice(i, 1)
-    if (!stores.length) continue
-  }
+  const storesRaw = Array.isArray(p.stores) ? p.stores : p.stores ? String(p.stores).split(',') : []
+  const stores = [...new Set(storesRaw.map((s) => SK_STORES[s.trim().toLowerCase()]).filter(Boolean))]
   const units = []
   const sq = Number(p.serving_quantity)
   if (sq > 0 && sq < 2000) units.push(['porcia', Math.round(sq)])
@@ -156,5 +172,3 @@ writeFileSync(OUT, JSON.stringify(out))
 const byCat = out.reduce((m, p) => ((m[p.category] = (m[p.category] || 0) + 1), m), {})
 console.log('products', out.length, 'with img', out.filter((p) => p.img).length, 'with store', out.filter((p) => p.stores).length)
 console.log(byCat)
-const byStore = out.flatMap((p) => p.stores || []).reduce((m, s) => ((m[s] = (m[s] || 0) + 1), m), {})
-console.log(Object.entries(byStore).sort((a, b) => b[1] - a[1]))
